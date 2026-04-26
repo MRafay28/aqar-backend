@@ -1,0 +1,319 @@
+import { UserModel } from '../user/models';
+import { AdModel } from '../ad/models/ad.model';
+import { PlanType } from '../subscription-plan/models/subscription-plan.model';
+import { UserSubscriptionModel } from '../subscription/models/user-subscription.model';
+import mongoose from 'mongoose';
+
+export interface GetOfficesParams {
+    page?: number;
+    limit?: number;
+    propertyType?: string;
+    area?: string | string[];
+    minPrice?: number;
+    maxPrice?: number;
+    search?: string;
+}
+
+export interface GetOfficesResult {
+    offices: any[];
+    total: number;
+    page: number;
+    totalPages: number;
+}
+
+export interface Office {
+    _id: string;
+    name: string;
+    phoneNumber: string;
+    avatar?: string;
+    instagram?: string;
+    tiktok?: string;
+    description?: string;
+    email?: string;
+    twitter?: string;
+    adsCount?: number;
+}
+
+/**
+ * Get all offices (users with active Office plan subscriptions)
+ */
+export const getOffices = async (params: GetOfficesParams = {}): Promise<GetOfficesResult> => {
+    const { page = 1, limit = 12, search } = params;
+
+    // 1. Find all users with an active OFFICE_PLAN subscription
+    const activeOfficeSubscriptions = await UserSubscriptionModel.find({
+        planType: PlanType.OFFICE_PLAN,
+        deletedAt: null
+    }).select('user');
+
+    const userIds = activeOfficeSubscriptions.map((sub) => sub.user);
+
+    if (userIds.length === 0) {
+        return {
+            offices: [],
+            total: 0,
+            page,
+            totalPages: 0
+        };
+    }
+
+    const skip = (page - 1) * limit;
+    const query: any = {
+        _id: { $in: userIds },
+        isActive: true,
+        deletedAt: null,
+        isVerified: true,
+        role: { $in: ['user'] }
+    };
+
+    if (search) {
+        query.$or = [{ name: { $regex: search, $options: 'i' } }, { phoneNumber: { $regex: search, $options: 'i' } }];
+    }
+
+    const [users, total] = await Promise.all([
+        UserModel.aggregate([
+            { $match: query },
+            { $sort: { createdAt: -1 } },
+            { $skip: skip },
+            { $limit: limit },
+            {
+                $lookup: {
+                    from: 'ads',
+                    let: { userId: '$_id' },
+                    pipeline: [{ $match: { $expr: { $and: [{ $eq: ['$user', '$$userId'] }, { $eq: ['$status', 'active'] }] } } }, { $count: 'count' }],
+                    as: 'adsCountLookup'
+                }
+            },
+            {
+                $addFields: {
+                    adsCount: { $ifNull: [{ $arrayElemAt: ['$adsCountLookup.count', 0] }, 0] }
+                }
+            },
+            {
+                $project: {
+                    name: 1,
+                    phoneNumber: 1,
+                    avatar: 1,
+                    instagram: 1,
+                    tiktok: 1,
+                    description: 1,
+                    adsCount: 1
+                }
+            }
+        ]),
+        UserModel.countDocuments(query)
+    ]);
+
+    // Transform users to office format
+    const offices = users.map((user) => ({
+        _id: user._id.toString(),
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        avatar: user.avatar,
+        instagram: user.instagram,
+        tiktok: user.tiktok,
+        description: user.description,
+        adsCount: user.adsCount,
+        email: user.phoneNumber
+    }));
+
+    return {
+        offices,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+    };
+};
+
+/**
+ * Get office by ID with all ads
+ */
+export const getOfficeById = async (
+    officeId: string,
+    adFilters?: {
+        propertyType?: string;
+        area?: string | string[];
+        minPrice?: number;
+        maxPrice?: number;
+        page?: number;
+        limit?: number;
+        purpose?: string;
+    },
+    userId?: string
+): Promise<{ office: Office | null; ads: any[]; totalAds: number; page: number; totalPages: number }> => {
+    // Get office (user) details
+    const user = await UserModel.findById(officeId).select('name phoneNumber avatar instagram tiktok description').lean();
+
+    if (!user) {
+        return {
+            office: null,
+            ads: [],
+            totalAds: 0,
+            page: adFilters?.page || 1,
+            totalPages: 0
+        };
+    }
+
+    const adPage = adFilters?.page || 1;
+    const adLimit = adFilters?.limit || 12;
+    const adSkip = (adPage - 1) * adLimit;
+
+    // Build match stage
+    const matchStage: any = {
+        user: new mongoose.Types.ObjectId(officeId),
+        status: 'active'
+    };
+
+    if (adFilters?.purpose) {
+        matchStage.purpose = adFilters.purpose;
+    }
+
+    if (adFilters?.propertyType) {
+        matchStage.propertyType = new mongoose.Types.ObjectId(adFilters.propertyType);
+    }
+
+    if (adFilters?.area) {
+        if (Array.isArray(adFilters.area)) {
+            matchStage.area = { $in: adFilters.area.map((a) => new mongoose.Types.ObjectId(a)) };
+        } else {
+            matchStage.area = new mongoose.Types.ObjectId(adFilters.area);
+        }
+    }
+
+    if (adFilters?.minPrice !== undefined || adFilters?.maxPrice !== undefined) {
+        matchStage.price = {};
+        if (adFilters.minPrice !== undefined) {
+            matchStage.price.$gte = adFilters.minPrice;
+        }
+        if (adFilters.maxPrice !== undefined) {
+            matchStage.price.$lte = adFilters.maxPrice;
+        }
+    }
+
+    // Pipeline stages for ads
+    const adPipeline: any[] = [
+        { $match: matchStage },
+        { $sort: { createdAt: -1 as const } },
+        { $skip: adSkip },
+        { $limit: adLimit },
+        // Populate propertyType
+        {
+            $lookup: {
+                from: 'propertytypes',
+                localField: 'propertyType',
+                foreignField: '_id',
+                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                as: 'propertyType'
+            }
+        },
+        { $unwind: { path: '$propertyType', preserveNullAndEmptyArrays: true } },
+        // Populate area
+        {
+            $lookup: {
+                from: 'areas',
+                localField: 'area',
+                foreignField: '_id',
+                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                as: 'area'
+            }
+        },
+        { $unwind: { path: '$area', preserveNullAndEmptyArrays: true } },
+        // Populate media (preserving order)
+        {
+            $lookup: {
+                from: 'media',
+                localField: 'media',
+                foreignField: '_id',
+                as: '_mediaPopulated'
+            }
+        },
+        {
+            $addFields: {
+                media: {
+                    $map: {
+                        input: '$media',
+                        as: 'id',
+                        in: {
+                            $arrayElemAt: [
+                                {
+                                    $filter: {
+                                        input: '$_mediaPopulated',
+                                        as: 'm',
+                                        cond: { $eq: ['$$m._id', '$$id'] }
+                                    }
+                                },
+                                0
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        { $project: { _mediaPopulated: 0 } },
+        // Remove legacy fields
+        { $project: { images: 0, videoThumbnail: 0 } }
+    ];
+
+    // Add isFav logic if userId is provided
+    if (userId && mongoose.Types.ObjectId.isValid(userId)) {
+        const userObjectId = new mongoose.Types.ObjectId(userId);
+        adPipeline.push(
+            {
+                $lookup: {
+                    from: 'favorites',
+                    let: { adId: '$_id' },
+                    pipeline: [
+                        {
+                            $match: {
+                                $expr: { $eq: ['$ad', '$$adId'] },
+                                user: userObjectId
+                            }
+                        },
+                        { $limit: 1 },
+                        { $project: { _id: 1 } }
+                    ],
+                    as: 'isFavLookup'
+                }
+            },
+            {
+                $addFields: {
+                    isFav: { $gt: [{ $size: '$isFavLookup' }, 0] }
+                }
+            },
+            { $project: { isFavLookup: 0 } }
+        );
+    }
+
+    // Aggregation pipeline
+    const result = await AdModel.aggregate([
+        {
+            $facet: {
+                ads: adPipeline,
+                totalCount: [{ $match: matchStage }, { $count: 'count' }]
+            }
+        }
+    ]);
+
+    const ads = result[0]?.ads || [];
+    const totalAds = result[0]?.totalCount?.[0]?.count || 0;
+
+    const office: Office = {
+        _id: user._id.toString(),
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        avatar: user.avatar,
+        instagram: user.instagram,
+        tiktok: user.tiktok,
+        description: user.description,
+        email: user.phoneNumber, // Using phoneNumber as email placeholder
+        adsCount: totalAds
+    };
+
+    return {
+        office,
+        ads,
+        totalAds,
+        page: adPage,
+        totalPages: Math.ceil(totalAds / adLimit)
+    };
+};

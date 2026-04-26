@@ -1,0 +1,508 @@
+{
+    "info": {
+        "_postman_id": "a62c4537-a8fa-4ac2-844e-d3b32ad57ac3",
+        "name": "Boilerplate APIs",
+        "description": "API collection for the Express Boilerplate project",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+        "_exporter_id": "21971226"
+    },
+    "item": [
+        {
+            "name": "General",
+            "item": [
+                {
+                    "name": "Ping",
+                    "request": {
+                        "method": "GET",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/ping",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "ping"]
+                        },
+                        "description": "Health check endpoint to verify the API is running."
+                    },
+                    "response": []
+                }
+            ]
+        },
+        {
+            "name": "User",
+            "item": [
+                {
+                    "name": "Authentication",
+                    "item": [
+                        {
+                            "name": "Signup",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"John Doe\",\n  \"email\": \"john1@example.com\",\n  \"password\": \"password123\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/signup",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "signup"]
+                                },
+                                "description": "Register a new user account. Sends a verification email."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Verify Email",
+                            "request": {
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/verify-email?token={{verificationToken}}",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "verify-email"],
+                                    "query": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{verificationToken}}"
+                                        }
+                                    ]
+                                },
+                                "description": "Verify user's email address using the token sent in the verification email."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Sign In",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData && jsonData.data && jsonData.data.token) {",
+                                            "    pm.environment.set('authToken', jsonData.data.token);",
+                                            "}"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"john@example.com\",\n  \"password\": \"password123\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/signin",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "signin"]
+                                },
+                                "description": "Authenticate user and get JWT token. Auto-saves token to environment."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Sign In (Google)",
+                            "event": [
+                                {
+                                    "listen": "test",
+                                    "script": {
+                                        "exec": [
+                                            "var jsonData = pm.response.json();",
+                                            "if (jsonData && jsonData.data && jsonData.data.token) {",
+                                            "    pm.environment.set('authToken', jsonData.data.token);",
+                                            "}"
+                                        ],
+                                        "type": "text/javascript"
+                                    }
+                                }
+                            ],
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"john@example.com\",\n  \"googleId\": \"google123456\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/signin",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "signin"]
+                                },
+                                "description": "Sign in with Google ID instead of password."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Forgot Password",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"email\": \"john@example.com\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/forgot-password",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "forgot-password"]
+                                },
+                                "description": "Request a password reset link via email."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Reset Password",
+                            "request": {
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"token\": \"{{resetToken}}\",\n  \"newPassword\": \"newPassword123\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/reset-password",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "reset-password"]
+                                },
+                                "description": "Reset password using the token received via email."
+                            },
+                            "response": []
+                        }
+                    ],
+                    "description": "Authentication-related endpoints"
+                },
+                {
+                    "name": "Admin/User Management",
+                    "item": [
+                        {
+                            "name": "Get All Users",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users"]
+                                },
+                                "description": "Get all users (admin/super_admin only)."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Get User by ID",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "GET",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/:userID",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", ":userID"],
+                                    "variable": [
+                                        {
+                                            "key": "userID",
+                                            "value": "6800d870c9825bd05dbf9950"
+                                        }
+                                    ]
+                                },
+                                "description": "Get user by ID (admin/super_admin only)."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Create User",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"Admin Created User\",\n  \"email\": \"admin.created@example.com\",\n  \"password\": \"password123\",\n  \"role\": \"USER\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users"]
+                                },
+                                "description": "Create a new user (admin/super_admin only)."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Update User",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "PUT",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated.email@example.com\",\n  \"role\": \"ADMIN\"\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/:userID",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", ":userID"],
+                                    "variable": [
+                                        {
+                                            "key": "userID",
+                                            "value": "6800d870c9825bd05dbf9950"
+                                        }
+                                    ]
+                                },
+                                "description": "Update user by ID (admin/super_admin/user)."
+                            },
+                            "response": []
+                        },
+                        {
+                            "name": "Delete User",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "DELETE",
+                                "header": [],
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/:userID",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", ":userID"],
+                                    "variable": [
+                                        {
+                                            "key": "userID",
+                                            "value": "6800d870c9825bd05dbf9950"
+                                        }
+                                    ]
+                                },
+                                "description": "Delete user by ID (admin/super_admin/user)."
+                            },
+                            "response": []
+                        }
+                    ],
+                    "description": "Admin/user management endpoints"
+                },
+                {
+                    "name": "Socket",
+                    "item": [
+                        {
+                            "name": "Send Socket Data",
+                            "request": {
+                                "auth": {
+                                    "type": "bearer",
+                                    "bearer": [
+                                        {
+                                            "key": "token",
+                                            "value": "{{authToken}}",
+                                            "type": "string"
+                                        }
+                                    ]
+                                },
+                                "method": "POST",
+                                "header": [
+                                    {
+                                        "key": "Content-Type",
+                                        "value": "application/json"
+                                    }
+                                ],
+                                "body": {
+                                    "mode": "raw",
+                                    "raw": "{\n  \"eventName\": \"testEvent\",\n  \"payload\": {\n    \"message\": \"Hello, Socket.IO!\"\n  }\n}"
+                                },
+                                "url": {
+                                    "raw": "{{baseUrl}}/api/v1/users/socket-data",
+                                    "host": ["{{baseUrl}}"],
+                                    "path": ["api", "v1", "users", "socket-data"]
+                                },
+                                "description": "Send socket.io event data to all connected clients."
+                            },
+                            "response": []
+                        }
+                    ],
+                    "description": "Socket.IO related endpoints"
+                }
+            ],
+            "description": "User management and authentication APIs"
+        },
+        {
+            "name": "Media",
+            "item": [
+                {
+                    "name": "Single File Upload",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "file",
+                                    "type": "file",
+                                    "src": "/C:/Users/Shuja Ali/Downloads/IMG_1705.jpg"
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/media/upload",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "media", "upload"]
+                        },
+                        "description": "Upload a single file. Field name: file."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Multiple File Upload",
+                    "request": {
+                        "method": "POST",
+                        "header": [],
+                        "body": {
+                            "mode": "formdata",
+                            "formdata": [
+                                {
+                                    "key": "files",
+                                    "type": "file",
+                                    "src": ["/C:/Users/Shuja Ali/Downloads/IMG_1705.jpg", "/C:/Users/Shuja Ali/Downloads/IMG_1704.jpg", "/C:/Users/Shuja Ali/Downloads/IMG_1702.jpg"]
+                                }
+                            ]
+                        },
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/media/upload/multiple",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "media", "upload", "multiple"]
+                        },
+                        "description": "Upload multiple files. Field name: files."
+                    },
+                    "response": []
+                },
+                {
+                    "name": "Delete File",
+                    "request": {
+                        "method": "DELETE",
+                        "header": [],
+                        "url": {
+                            "raw": "{{baseUrl}}/api/v1/media/delete/:filename",
+                            "host": ["{{baseUrl}}"],
+                            "path": ["api", "v1", "media", "delete", ":filename"],
+                            "variable": [
+                                {
+                                    "key": "filename",
+                                    "value": "1744886435175-IMG_1705.jpg"
+                                }
+                            ]
+                        },
+                        "description": "Delete a file by filename. Example: /api/v1/media/delete/1713371234567-myfile.png"
+                    },
+                    "response": []
+                }
+            ],
+            "description": "Media upload and management APIs"
+        }
+    ],
+    "event": [
+        {
+            "listen": "prerequest",
+            "script": {
+                "type": "text/javascript",
+                "exec": [""]
+            }
+        },
+        {
+            "listen": "test",
+            "script": {
+                "type": "text/javascript",
+                "exec": [""]
+            }
+        }
+    ],
+    "variable": [
+        {
+            "key": "baseUrl",
+            "value": "http://localhost:4000",
+            "type": "string"
+        },
+        {
+            "key": "authToken",
+            "value": "",
+            "type": "string"
+        }
+    ]
+}

@@ -1,0 +1,127 @@
+import { z } from 'zod';
+import { UserRole } from './user.constants';
+
+const userRoleEnum = z.nativeEnum(UserRole);
+
+// Password validation helper - matches UI validation
+export const passwordSchema = z.string().min(1, 'Password is required');
+
+const createUserSchema = z.object({
+    body: z.object({
+        name: z.string().min(1, 'Name is required').trim(),
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+        password: passwordSchema,
+        role: userRoleEnum.optional()
+    })
+});
+
+const updateUserSchema = z.object({
+    body: z.object({
+        name: z.string().trim().optional(),
+        phoneNumber: z.string().optional(),
+        password: passwordSchema.optional(),
+        role: userRoleEnum.optional(),
+        instagram: z.string().optional(),
+        tiktok: z.string().optional(),
+        description: z.string().optional()
+    })
+});
+
+const updateAccountSchema = z.object({
+    body: z.object({
+        name: z.string().trim().optional(),
+        email: z.string().email('Invalid email address').optional(),
+        password: passwordSchema.optional()
+    })
+});
+
+const getUserByIdSchema = z.object({
+    params: z.object({
+        id: z.string().min(1, 'User ID is required')
+    })
+});
+
+const deleteUserSchema = z.object({
+    params: z.object({
+        id: z.string().min(1, 'User ID is required')
+    })
+});
+
+const signinSchema = z.object({
+    body: z.object({
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+        password: z.string().min(1, 'Password is required')
+    })
+});
+
+const forgotPasswordSchema = z.object({
+    body: z.object({
+        phoneNumber: z.string().min(1, 'Phone number is required')
+    })
+});
+
+const resetPasswordSchema = z.object({
+    body: z.object({
+        token: z.string().min(1, 'Token is required'),
+        newPassword: passwordSchema
+    })
+});
+
+const verifyOTPSchema = z.object({
+    body: z.object({
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+        code: z.string().min(1, 'Verification code is required')
+    })
+});
+
+const resendOTPSchema = z.object({
+    body: z.object({
+        phoneNumber: z.string().min(1, 'Phone number is required')
+    })
+});
+
+const verifyResetTokenSchema = z.object({
+    query: z.object({
+        token: z.string().min(1, 'Reset token is required')
+    })
+});
+
+const businessOwnerSignupSchema = z.object({
+    body: z.object({
+        name: z.string().min(1, 'Name is required').trim(),
+        phoneNumber: z.string().min(1, 'Phone number is required'),
+        password: passwordSchema
+    })
+});
+
+const getAllBusinessesSchema = z.object({
+    query: z.object({
+        page: z.string().optional(),
+        limit: z.string().optional(),
+        search: z.string().optional(),
+        status: z.string().optional()
+    })
+});
+
+const toggleUserStatusSchema = z.object({
+    params: z.object({
+        id: z.string().min(1, 'User ID is required')
+    })
+});
+
+export {
+    createUserSchema,
+    updateUserSchema,
+    getUserByIdSchema,
+    deleteUserSchema,
+    signinSchema,
+    forgotPasswordSchema,
+    resetPasswordSchema,
+    verifyOTPSchema,
+    resendOTPSchema,
+    updateAccountSchema,
+    businessOwnerSignupSchema,
+    verifyResetTokenSchema,
+    getAllBusinessesSchema,
+    toggleUserStatusSchema
+};
