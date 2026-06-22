@@ -528,6 +528,8 @@ export const deleteFile = async (key: string): Promise<void> => {
             objectKey = urlObj.pathname.substring(1);
         }
 
+        logger.info(`[media.delete] start key=${objectKey}`);
+
         await s3Client.send(
             new DeleteObjectCommand({
                 Bucket: BUCKET_NAME,
@@ -536,7 +538,9 @@ export const deleteFile = async (key: string): Promise<void> => {
         );
 
         await MediaModel.deleteOne({ key: objectKey });
+        logger.info(`[media.delete] success key=${objectKey}`);
     } catch (error) {
-        logger.error('Delete failed:', error);
+        const message = error instanceof Error ? error.message : 'unknown error';
+        logger.error(`[media.delete] failed key=${key} reason=${message}`);
     }
 };
