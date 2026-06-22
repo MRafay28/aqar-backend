@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import * as AdminController from './admin.controller';
-import { toggleUserStatus } from '../user/user.controller';
+import { toggleUserStatus, toggleUserVerified } from '../user/user.controller';
 import asyncHandler from '../../utils/async-handler';
 import authMiddleware from '../../middlewares/auth';
 import authorizeRoles from '../../middlewares/authorize-roles';
+import validateRequest from '../../middlewares/validate-request';
 import { UserRole } from '../user/user.constants';
+import { toggleUserStatusSchema, toggleUserVerifiedSchema } from '../user/user.validation';
 
 const router = Router();
 
@@ -20,7 +22,8 @@ router.get('/users', asyncHandler(AdminController.getAllUsers));
 router.get('/users/:id', asyncHandler(AdminController.getUserDetails));
 router.put('/users/:id', asyncHandler(AdminController.updateUser));
 router.delete('/users/:id', asyncHandler(AdminController.deleteUser));
-router.patch('/users/:id/toggle-status', asyncHandler(toggleUserStatus));
+router.patch('/users/:id/toggle-status', validateRequest(toggleUserStatusSchema), asyncHandler(toggleUserStatus));
+router.patch('/users/:id/toggle-verified', validateRequest(toggleUserVerifiedSchema), asyncHandler(toggleUserVerified));
 router.patch('/users/:id/password', asyncHandler(AdminController.changeUserPassword));
 
 // Ads management

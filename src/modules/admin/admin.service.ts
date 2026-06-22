@@ -211,6 +211,8 @@ export interface AdminUser {
     email?: string;
     role: string;
     isActive: boolean;
+    isVerified: boolean;
+    avatar?: string;
     createdAt: Date;
     updatedAt: Date;
 }

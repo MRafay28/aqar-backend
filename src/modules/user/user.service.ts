@@ -228,6 +228,18 @@ const toggleUserStatus = async (userId: string): Promise<User> => {
     return user;
 };
 
+const toggleUserVerified = async (userId: string): Promise<User> => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new CustomError(ERROR_MESSAGES.USER_ID_NOT_FOUND(userId), 404);
+    }
+
+    user.isVerified = !user.isVerified;
+    await user.save();
+
+    return user;
+};
+
 export {
     getAllUsers,
     getUserById,
@@ -245,5 +257,6 @@ export {
     getAllBusinesses,
     getBusinessStats,
     toggleUserStatus,
+    toggleUserVerified,
     getUserWithDetails
 };

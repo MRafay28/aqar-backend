@@ -9,7 +9,7 @@ import logger from "../../utils/logger";
 import { getUserSubscriptions } from "../subscription/subscription.service";
 import { sendSMS } from "../../utils/sms-sender";
 const signup = async (req: Request, res: Response) => {
-  const { name, phoneNumber, password } = req.body;
+  const { name, phoneNumber, password, avatar } = req.body;
 
   const existingUser = await UserService.getUserByPhoneNumber(phoneNumber);
   if (existingUser) {
@@ -20,6 +20,7 @@ const signup = async (req: Request, res: Response) => {
     name,
     phoneNumber: phoneNumber.trim(),
     password,
+    avatar,
     role: UserRole.USER,
     isVerified: false,
     isActive: true,
@@ -303,6 +304,18 @@ const toggleUserStatus = async (req: Request, res: Response) => {
   );
 };
 
+const toggleUserVerified = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const user = await UserService.toggleUserVerified(id as string);
+
+  res.status(200).json(
+    formatResponse(true, "User verification updated successfully", {
+      userId: user._id,
+      isVerified: user.isVerified,
+    }),
+  );
+};
+
 export {
   getUsers,
   getUserById,
@@ -319,4 +332,5 @@ export {
   getAllBusinesses,
   getBusinessStats,
   toggleUserStatus,
+  toggleUserVerified,
 };

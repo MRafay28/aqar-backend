@@ -90,7 +90,8 @@ const businessOwnerSignupSchema = z.object({
     body: z.object({
         name: z.string().min(1, 'Name is required').trim(),
         phoneNumber: z.string().min(1, 'Phone number is required'),
-        password: passwordSchema
+        password: passwordSchema,
+        avatar: z.string().min(1, 'Profile photo is required')
     })
 });
 
@@ -104,6 +105,12 @@ const getAllBusinessesSchema = z.object({
 });
 
 const toggleUserStatusSchema = z.object({
+    params: z.object({
+        id: z.string().min(1, 'User ID is required')
+    })
+});
+
+const toggleUserVerifiedSchema = z.object({
     params: z.object({
         id: z.string().min(1, 'User ID is required')
     })
@@ -123,5 +130,6 @@ export {
     businessOwnerSignupSchema,
     verifyResetTokenSchema,
     getAllBusinessesSchema,
-    toggleUserStatusSchema
+    toggleUserStatusSchema,
+    toggleUserVerifiedSchema
 };
