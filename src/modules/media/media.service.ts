@@ -328,6 +328,7 @@ export const initMultipartUpload = async ({
     Key: key,
     ContentType: mimeType,
   });
+  ensureCloudflareR2Config();
 
   const response = await s3Client.send(command);
   if (!response.UploadId) {
@@ -352,7 +353,7 @@ export const getMultipartPartUploadUrl = async ({
     UploadId: uploadId,
     PartNumber: partNumber,
   });
-
+  ensureCloudflareR2Config();
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
 
   return { uploadUrl };
