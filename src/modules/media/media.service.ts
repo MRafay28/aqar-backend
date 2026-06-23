@@ -293,10 +293,6 @@ export interface MultipartAbortInput {
   uploadId: string;
 }
 const ensureCloudflareR2Config = () => {
-  console.log("Checking Cloudflare R2 configuration...");
-  console.log("R2_ENDPOINT:", config.R2_ENDPOINT);
-  console.log("R2_ACCESS_KEY_ID:", config.R2_ACCESS_KEY_ID);
-  console.log("R2_SECRET_ACCESS_KEY:", config.R2_SECRET_ACCESS_KEY);
   if (
     !config.R2_ENDPOINT ||
     !config.R2_ACCESS_KEY_ID ||
