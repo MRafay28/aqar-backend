@@ -370,7 +370,7 @@ export const getMultipartThumbnailUploadUrl = async ({
     Key: key,
     ContentType: mimeType,
   });
-
+  ensureCloudflareR2Config();
   const uploadUrl = await getSignedUrl(s3Client, command, { expiresIn: 900 });
 
   return {
