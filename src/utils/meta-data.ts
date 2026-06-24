@@ -297,14 +297,6 @@ export const AREAS = [
         governorateAr: 'محافظة العاصمة'
     },
     {
-        _id: '698be3b95036021ea2100319',
-        label: 'Dasman',
-        labelAr: 'دسمان',
-        value: 'dasman',
-        governorate: 'Al-Asimah Governorate',
-        governorateAr: 'محافظة العاصمة'
-    },
-    {
         _id: '698be3b98e61c0a074234b0b',
         label: 'Al Faiha',
         labelAr: 'الفيحاء',
@@ -433,14 +425,6 @@ export const AREAS = [
         governorateAr: 'محافظة العاصمة'
     },
     {
-        _id: '698be3b9ec211e993b6acd1d',
-        label: 'Dasma',
-        labelAr: 'الدسمة',
-        value: 'dasma',
-        governorate: 'Al-Asimah Governorate',
-        governorateAr: 'محافظة العاصمة'
-    },
-    {
         _id: '698be3b96d878b2424e12cd8',
         label: 'Hessa Mubarak Suburb',
         labelAr: 'ضاحية حصة مبارك',
@@ -469,14 +453,6 @@ export const AREAS = [
         label: 'Yarmouk',
         labelAr: 'اليرموك',
         value: 'yarmouk',
-        governorate: 'Al-Asimah Governorate',
-        governorateAr: 'محافظة العاصمة'
-    },
-    {
-        _id: '698be3b95f2ecb26d6e644d7',
-        label: 'Dasman',
-        labelAr: 'الدسمن',
-        value: 'dasman',
         governorate: 'Al-Asimah Governorate',
         governorateAr: 'محافظة العاصمة'
     },
@@ -1229,6 +1205,7 @@ export const AREAS = [
 
 export const PROPERTY_TYPES = [
     { label: 'Apartment', labelAr: 'شقة', value: 'apartment' },
+    { label: 'Studio', labelAr: 'استديو', value: 'studio' },
     { label: 'Floor', labelAr: 'دور', value: 'floor' },
     { label: 'House', labelAr: 'بيت', value: 'house' },
     { label: 'Duplex', labelAr: 'دوبلكس', value: 'duplex' },
