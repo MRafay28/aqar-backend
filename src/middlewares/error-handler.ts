@@ -15,7 +15,7 @@ const errorHandler = (err: Error, req: Request, res: Response, next: NextFunctio
     );
 
     if (err instanceof CustomError) {
-        res.status(err.statusCode).json(formatResponse(false, err.message, null, err.code));
+        res.status(err.statusCode).json(formatResponse(false, err.message, err.data ?? null, err.code));
     } else {
         res.status(500).json(formatResponse(false, err.message || 'Something went wrong!'));
     }

@@ -32,6 +32,14 @@ const getAllUsers = async (req: Request, res: Response) => {
     );
 };
 
+const createUser = async (req: Request, res: Response) => {
+    const user = await AdminService.createAdminUser(req.body);
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const { password, __v, ...userWithoutSensitiveData } = user.toObject();
+
+    res.status(201).json(formatResponse(true, 'User created successfully', userWithoutSensitiveData));
+};
+
 const getUserDetails = async (req: Request, res: Response) => {
     try {
         const id = req.params.id as string;
@@ -76,6 +84,16 @@ const updateUser = async (req: Request, res: Response) => {
         res.status(200).json(formatResponse(true, 'User updated successfully', updatedUser));
     } catch (error: any) {
         res.status(400).json(formatResponse(false, error.message || 'Failed to update user'));
+    }
+};
+
+const verifyUser = async (req: Request, res: Response) => {
+    try {
+        const id = req.params.id as string;
+        const result = await AdminService.verifyUserForAdmin(id);
+        res.status(200).json(formatResponse(true, 'User verified successfully', result));
+    } catch (error: any) {
+        res.status(400).json(formatResponse(false, error.message || 'Failed to verify user'));
     }
 };
 
@@ -191,10 +209,12 @@ export {
     getDashboardStats,
     getAdsOverTime,
     getAllUsers,
+    createUser,
     getUserDetails,
     deleteUser,
     changeUserPassword,
     updateUser,
+    verifyUser,
     getAllAds,
     getAdminSubscriptions,
     cancelSubscription,

@@ -7,6 +7,7 @@ import authorizeRoles from '../../middlewares/authorize-roles';
 import validateRequest from '../../middlewares/validate-request';
 import { UserRole } from '../user/user.constants';
 import { toggleUserStatusSchema, toggleUserVerifiedSchema } from '../user/user.validation';
+import { createAdminUserSchema } from './admin.validation';
 
 const router = Router();
 
@@ -19,9 +20,11 @@ router.get('/ads-over-time', asyncHandler(AdminController.getAdsOverTime));
 
 // Users management
 router.get('/users', asyncHandler(AdminController.getAllUsers));
+router.post('/users', validateRequest(createAdminUserSchema), asyncHandler(AdminController.createUser));
 router.get('/users/:id', asyncHandler(AdminController.getUserDetails));
 router.put('/users/:id', asyncHandler(AdminController.updateUser));
 router.delete('/users/:id', asyncHandler(AdminController.deleteUser));
+router.patch('/users/:id/verify', validateRequest(toggleUserVerifiedSchema), asyncHandler(AdminController.verifyUser));
 router.patch('/users/:id/toggle-status', validateRequest(toggleUserStatusSchema), asyncHandler(toggleUserStatus));
 router.patch('/users/:id/toggle-verified', validateRequest(toggleUserVerifiedSchema), asyncHandler(toggleUserVerified));
 router.patch('/users/:id/password', asyncHandler(AdminController.changeUserPassword));
