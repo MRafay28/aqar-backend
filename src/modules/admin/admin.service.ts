@@ -1,3 +1,4 @@
+import CustomError from '../../utils/custom-error';
 import { UserModel } from '../user/models';
 import { AdModel } from '../ad/models/ad.model';
 import { UserSubscriptionModel } from '../subscription/models/user-subscription.model';
@@ -5,6 +6,7 @@ import { SubscriptionPlanModel } from '../subscription-plan/models/subscription-
 import { Types, PipelineStage } from 'mongoose';
 import * as FailedAdService from '../failed-ad/failed-ad.service';
 import * as mediaService from '../media/media.service';
+import { UserRole } from '../user/user.constants';
 
 export interface DashboardStats {
     totalUsers: number;
@@ -211,6 +213,8 @@ export interface AdminUser {
     email?: string;
     role: string;
     isActive: boolean;
+    isVerified: boolean;
+    avatar?: string;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -219,6 +223,43 @@ export interface UserListResponse {
     users: AdminUser[];
     pagination: PaginationInfo;
 }
+
+export interface CreateAdminUserInput {
+    name: string;
+    phoneNumber: string;
+    password: string;
+    avatar: string;
+}
+
+export const createAdminUser = async (payload: CreateAdminUserInput) => {
+    const phoneNumber = payload.phoneNumber.trim();
+    const existingUser = await UserModel.findOne({ phoneNumber });
+
+    if (existingUser) {
+        if (!existingUser.isVerified) {
+            throw new CustomError('Phone number is already registered but not verified.', 409, 'USER_EXISTS_UNVERIFIED', {
+                userId: existingUser._id,
+                name: existingUser.name,
+                phoneNumber: existingUser.phoneNumber
+            });
+        }
+
+        throw new CustomError('Phone number is already registered.', 409, 'USER_ALREADY_EXISTS');
+    }
+
+    const user = new UserModel({
+        name: payload.name,
+        phoneNumber,
+        password: payload.password,
+        avatar: payload.avatar,
+        role: UserRole.USER,
+        isVerified: true,
+        isActive: true
+    });
+
+    await user.save();
+    return user;
+};
 
 export const getAllUsersForAdmin = async (page: number = 1, limit: number = 10, search?: string, status?: string): Promise<UserListResponse> => {
     const skip = (page - 1) * limit;
@@ -426,6 +467,25 @@ export const updateUserForAdmin = async (userId: string, updatedData: Partial<Re
 
     const updatedUser = await UserModel.findByIdAndUpdate(userId, updatedData, { new: true }).select('-password');
     return updatedUser;
+};
+
+export const verifyUserForAdmin = async (userId: string) => {
+    const user = await UserModel.findById(userId);
+    if (!user) {
+        throw new Error('User not found');
+    }
+
+    if (user.role === UserRole.SUPER_ADMIN) {
+        throw new Error('Cannot verify super admin from user management');
+    }
+
+    user.isVerified = true;
+    await user.save();
+
+    return {
+        userId: user._id,
+        isVerified: user.isVerified
+    };
 };
 
 export const getAllAdsForAdmin = async (params: Record<string, unknown>) => {
