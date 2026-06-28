@@ -27,11 +27,14 @@ const signup = async (req: Request, res: Response) => {
   });
 
   const otp = await UserService.generateOTP((newUser._id as any).toString());
-  logger.info("otp", otp);
-  await sendSMS(
+  logger.info(`OTP generated for signup: ${phoneNumber}`);
+  const smsSent = await sendSMS(
     phoneNumber,
     `هو رقم التفعيل الخاص بك في موقع مستر عقار ${otp}`,
   );
+  if (!smsSent) {
+    throw new CustomError("Failed to send verification code", 500);
+  }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { password: _, __v, ...userWithoutSensitiveData } = newUser.toObject();
@@ -177,11 +180,14 @@ const forgotPassword = async (req: Request, res: Response) => {
   }
 
   const otp = await UserService.generateOTP((user._id as any).toString());
-  logger.info("otp", otp);
-  await sendSMS(
+  logger.info(`OTP generated for forgot-password: ${phoneNumber}`);
+  const smsSent = await sendSMS(
     phoneNumber,
     `هذا هو رمز إعادة تعيين كلمة المرور لموقع مستر عقار الإلكتروني. ${otp}`,
   );
+  if (!smsSent) {
+    throw new CustomError("Failed to send reset code", 500);
+  }
 
   res.status(200).json(formatResponse(true, "Reset code sent to your phone"));
 };
@@ -245,7 +251,7 @@ const resendOTP = async (req: Request, res: Response) => {
   }
 
   const otp = await UserService.generateOTP((user._id as any).toString());
-  logger.info("otp", otp);
+  logger.info(`OTP generated for resend: ${phoneNumber}`);
   const smsSent = await sendSMS(
     phoneNumber,
     `Your verification code is: ${otp}`,
