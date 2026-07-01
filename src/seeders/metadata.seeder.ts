@@ -2,6 +2,7 @@ import { PropertyType } from '../modules/metadata/models/property-type.model';
 import { Area } from '../modules/metadata/models/area.model';
 import logger from '../utils/logger';
 import { AREAS, PROPERTY_TYPES } from '../utils/meta-data';
+import { nextPublicId } from '../modules/counter/counter.service';
 
 export function generateObjectId(): string {
     const timestamp = Math.floor(Date.now() / 1000).toString(16);
@@ -12,33 +13,33 @@ const seedMetadata = async (): Promise<void> => {
     try {
         // Seed Property Types (Upsert to update Arabic labels)
         for (const type of PROPERTY_TYPES) {
-            await PropertyType.findOneAndUpdate(
-                { value: type.value },
-                {
-                    $set: {
-                        label: type.label,
-                        labelAr: type.labelAr
-                    }
-                },
-                { upsert: true, new: true }
-            );
+            const existing = await PropertyType.findOne({ value: type.value });
+            if (existing) {
+                await PropertyType.updateOne({ _id: existing._id }, { $set: { label: type.label, labelAr: type.labelAr } });
+            } else {
+                await PropertyType.create({ ...type, publicId: await nextPublicId('propertyType') });
+            }
             logger.info(`Property Type seeded/updated: ${type.label}`);
         }
 
         // Seed Areas (Upsert to preserve ObjectIDs and relationships)
         for (const area of AREAS) {
-            await Area.findOneAndUpdate(
-                { value: area.value },
-                {
-                    $set: {
-                        label: area.label,
-                        labelAr: area.labelAr,
-                        governorate: area.governorate,
-                        governorateAr: area.governorateAr
+            const existing = await Area.findOne({ value: area.value });
+            if (existing) {
+                await Area.updateOne(
+                    { _id: existing._id },
+                    {
+                        $set: {
+                            label: area.label,
+                            labelAr: area.labelAr,
+                            governorate: area.governorate,
+                            governorateAr: area.governorateAr
+                        }
                     }
-                },
-                { upsert: true, new: true }
-            );
+                );
+            } else {
+                await Area.create({ ...area, publicId: await nextPublicId('area') });
+            }
             logger.info(`Area seeded/updated: ${area.label} (${area.governorate})`);
         }
 

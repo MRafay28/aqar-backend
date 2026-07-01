@@ -1,5 +1,6 @@
 import { PipelineStage, Types } from 'mongoose';
 import { FailedAdModel, IFailedAd } from './models/failed-ad.model';
+import { resolveAreaId, resolvePropertyTypeId } from '../public-id/public-id.service';
 
 export interface GetFailedAdsParams {
     page?: number;
@@ -22,8 +23,24 @@ export const saveFailedAd = async (adData: any, errorMessage: string): Promise<I
         adData.premiumAd = adData.isPremium;
     }
 
+    const failedData = { ...adData };
+    if (failedData.propertyType !== undefined) {
+        try {
+            failedData.propertyType = await resolvePropertyTypeId(failedData.propertyType);
+        } catch {
+            delete failedData.propertyType;
+        }
+    }
+    if (failedData.area !== undefined) {
+        try {
+            failedData.area = await resolveAreaId(failedData.area);
+        } catch {
+            delete failedData.area;
+        }
+    }
+
     return await FailedAdModel.create({
-        ...adData,
+        ...failedData,
         error: errorMessage
     });
 };
@@ -111,8 +128,8 @@ export const getFailedAdById = async (id: string): Promise<IFailedAd | null> => 
     if (!Types.ObjectId.isValid(id)) return null;
     return await FailedAdModel.findById(id)
         .populate('user', 'name phoneNumber')
-        .populate('propertyType', 'label labelAr value')
-        .populate('area', 'label labelAr value governorateAr')
+        .populate('propertyType', 'publicId label labelAr value')
+        .populate('area', 'publicId label labelAr value governorateAr')
         .populate('media');
 };
 

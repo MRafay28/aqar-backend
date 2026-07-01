@@ -5,6 +5,7 @@ import { MediaModel } from '../media/models/media.model';
 import { UserSubscriptionModel } from '../subscription/models/user-subscription.model';
 import { PlanType } from '../subscription-plan/models/subscription-plan.model';
 import CustomError from '../../utils/custom-error';
+import { resolveAdId, resolveAreaId, resolveMetadataInput, resolvePropertyTypeId } from '../public-id/public-id.service';
 
 export type AdDocument = Document<unknown, {}, IAd> & IAd & { _id: Types.ObjectId };
 
@@ -36,7 +37,8 @@ export const createAd = async (adData: Partial<IAd>): Promise<AdDocument> => {
     adData.premiumAd = true;
     adData.premiumExpiresAt = undefined;
 
-    const ad = await AdModel.create(adData);
+    const resolvedAdData = await resolveMetadataInput(adData as Partial<IAd>);
+    const ad = await AdModel.create(resolvedAdData);
 
     selectedSubscription.credits -= 1;
     selectedSubscription.isActive = true;
@@ -90,15 +92,15 @@ export const getAds = async (params: GetAdsParams = {}): Promise<GetAdsResult> =
         filter.purpose = purpose;
     }
 
-    if (propertyType && Types.ObjectId.isValid(propertyType)) {
-        filter.propertyType = new Types.ObjectId(propertyType);
+    if (propertyType) {
+        filter.propertyType = await resolvePropertyTypeId(propertyType);
     }
 
     if (area) {
         if (Array.isArray(area)) {
-            filter.area = { $in: area.filter((id) => Types.ObjectId.isValid(id)).map((id) => new Types.ObjectId(id)) };
-        } else if (Types.ObjectId.isValid(area)) {
-            filter.area = new Types.ObjectId(area);
+            filter.area = { $in: await Promise.all(area.map(resolveAreaId)) };
+        } else {
+            filter.area = await resolveAreaId(area);
         }
     }
 
@@ -144,7 +146,7 @@ export const getAds = async (params: GetAdsParams = {}): Promise<GetAdsResult> =
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -156,7 +158,7 @@ export const getAds = async (params: GetAdsParams = {}): Promise<GetAdsResult> =
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },
@@ -273,10 +275,11 @@ export const getAds = async (params: GetAdsParams = {}): Promise<GetAdsResult> =
 };
 
 export const getAdById = async (id: string): Promise<IAd | null> => {
-    const ad = await AdModel.findById(id)
+    const objectId = await resolveAdId(id);
+    const ad = await AdModel.findById(objectId)
         .populate('user', 'name phoneNumber avatar')
-        .populate('propertyType', 'label labelAr value')
-        .populate('area', 'label labelAr value governorateAr')
+        .populate('propertyType', 'publicId label labelAr value')
+        .populate('area', 'publicId label labelAr value governorateAr')
         .populate('media')
         .select('-images -videoThumbnail');
 
@@ -284,7 +287,7 @@ export const getAdById = async (id: string): Promise<IAd | null> => {
 
     // Increment views
     ad.views = (ad.views || 0) + 1;
-    await ad.save();
+    await AdModel.updateOne({ _id: ad._id }, { $inc: { views: 1 } });
 
     return ad;
 };
@@ -296,8 +299,12 @@ export const getAdById = async (id: string): Promise<IAd | null> => {
  * View increment is done as a non-blocking fire-and-forget.
  */
 export const getAdByIdAggregated = async (id: string, userId?: string, shouldIncrement: boolean = false): Promise<IAd | null> => {
-    if (!Types.ObjectId.isValid(id)) return null;
-    const adObjectId = new Types.ObjectId(id);
+    let adObjectId: Types.ObjectId;
+    try {
+        adObjectId = await resolveAdId(id, true);
+    } catch {
+        return null;
+    }
 
     const pipeline: PipelineStage[] = [
         // 1. Match the ad
@@ -321,7 +328,7 @@ export const getAdByIdAggregated = async (id: string, userId?: string, shouldInc
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -333,7 +340,7 @@ export const getAdByIdAggregated = async (id: string, userId?: string, shouldInc
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },
@@ -462,9 +469,11 @@ export const updateAd = async (id: string, updates: Partial<IAd>): Promise<IAd |
         updates.premiumAd = updates.isPremium;
     }
 
+    const adObjectId = await resolveAdId(id);
+    updates = await resolveMetadataInput(updates);
     // If media is being updated, handle deletions of removed media
     if (updates.media) {
-        const oldAd = await AdModel.findById(id);
+        const oldAd = await AdModel.findById(adObjectId);
         if (oldAd && oldAd.media) {
             const newMediaIds = new Set(updates.media.map((m) => m.toString()));
             const mediaToDelete = oldAd.media.filter((m) => !newMediaIds.has(m.toString()));
@@ -484,11 +493,12 @@ export const updateAd = async (id: string, updates: Partial<IAd>): Promise<IAd |
 
     updates.premiumExpiresAt = undefined;
 
-    return await AdModel.findByIdAndUpdate(id, updates, { new: true });
+    return await AdModel.findByIdAndUpdate(adObjectId, updates, { new: true });
 };
 
 export const deleteAd = async (id: string): Promise<IAd | null> => {
-    const ad = await AdModel.findByIdAndDelete(id);
+    const adObjectId = await resolveAdId(id);
+    const ad = await AdModel.findByIdAndDelete(adObjectId);
     if (ad && ad.media) {
         for (const mediaId of ad.media) {
             const media = await MediaModel.findById(mediaId);
@@ -528,7 +538,7 @@ export const getMyAds = async (userId: string): Promise<IAd[]> => {
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -540,7 +550,7 @@ export const getMyAds = async (userId: string): Promise<IAd[]> => {
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },

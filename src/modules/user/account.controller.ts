@@ -4,7 +4,8 @@ import asyncHandler from '../../utils/async-handler';
 import { formatResponse } from '../../utils/helpers';
 import { JwtPayload } from 'jsonwebtoken';
 import { WishlistStatus } from './models/wishlist.model';
-import * as AdService from '../ad/ad.service';
+import { resolveAdId } from '../public-id/public-id.service';
+import { AdModel } from '../ad/models/ad.model';
 // Profile
 export const getProfile = asyncHandler(async (req: Request, res: Response) => {
     const user = req.user as JwtPayload;
@@ -59,7 +60,8 @@ export const addFavorite = asyncHandler(async (req: Request, res: Response) => {
     const user = req.user as JwtPayload;
     const { adId } = req.body;
     // Check if user is trying to favorite their own ad
-    const ad = await AdService.getAdById(adId);
+    const adObjectId = await resolveAdId(adId);
+    const ad = await AdModel.findById(adObjectId).select('user');
     if (!ad) {
         return res.status(404).json(formatResponse(false, 'Ad not found'));
     }

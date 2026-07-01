@@ -1,7 +1,20 @@
 import axios, { AxiosResponse } from 'axios';
 
+const exposePublicIds = (value: any): any => {
+    if (value === null || value === undefined || value instanceof Date || Buffer.isBuffer(value)) return value;
+    if (Array.isArray(value)) return value.map(exposePublicIds);
+    if (typeof value !== 'object') return value;
+    if (value._bsontype === 'ObjectId') return value;
+
+    const source = typeof value.toObject === 'function' ? value.toObject({ virtuals: true }) : value;
+    const result: Record<string, any> = {};
+    for (const [key, child] of Object.entries(source)) result[key] = exposePublicIds(child);
+    if (typeof source.publicId === 'number') result.id = source.publicId;
+    return result;
+};
+
 const formatResponse = (success: boolean, message: string, data: any = null, code?: string) => {
-    const response: { success: boolean; message: string; data: any; code?: string } = { success, message, data };
+    const response: { success: boolean; message: string; data: any; code?: string } = { success, message, data: exposePublicIds(data) };
     if (code) {
         response.code = code;
     }

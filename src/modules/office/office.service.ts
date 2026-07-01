@@ -3,6 +3,7 @@ import { AdModel } from '../ad/models/ad.model';
 import { PlanType } from '../subscription-plan/models/subscription-plan.model';
 import { UserSubscriptionModel } from '../subscription/models/user-subscription.model';
 import mongoose from 'mongoose';
+import { resolveAreaId, resolvePropertyTypeId } from '../public-id/public-id.service';
 
 export interface GetOfficesParams {
     page?: number;
@@ -169,14 +170,14 @@ export const getOfficeById = async (
     }
 
     if (adFilters?.propertyType) {
-        matchStage.propertyType = new mongoose.Types.ObjectId(adFilters.propertyType);
+        matchStage.propertyType = await resolvePropertyTypeId(adFilters.propertyType);
     }
 
     if (adFilters?.area) {
         if (Array.isArray(adFilters.area)) {
-            matchStage.area = { $in: adFilters.area.map((a) => new mongoose.Types.ObjectId(a)) };
+            matchStage.area = { $in: await Promise.all(adFilters.area.map(resolveAreaId)) };
         } else {
-            matchStage.area = new mongoose.Types.ObjectId(adFilters.area);
+            matchStage.area = await resolveAreaId(adFilters.area);
         }
     }
 
@@ -202,7 +203,7 @@ export const getOfficeById = async (
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -213,7 +214,7 @@ export const getOfficeById = async (
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },
