@@ -16,7 +16,7 @@ const getPlanCredits = (plan: { adCredits?: number }) => {
 };
 
 export const subscribeUser = async (userId: string, planId: string, couponCode?: string, lang: string = 'en') => {
-    const plan = await SubscriptionPlanModel.findById(planId);
+    const plan = await SubscriptionPlanModel.findOne({ _id: planId, planType: PlanType.OFFICE_PLAN, isActive: true });
     if (!plan) {
         throw new Error('Plan not found');
     }
@@ -111,12 +111,12 @@ export const getUserSubscriptions = async (userId: string) => {
     // Populate plan details for display names etc if needed
     return await UserSubscriptionModel.find({
         user: userId,
+        planType: PlanType.OFFICE_PLAN,
         $or: [{ isActive: true }, { credits: { $gt: 0 } }]
     }).populate('plan');
 };
 
 export interface RemainingAdCredits {
-    monthlyCredits: number;
     officeCredits: number;
     totalCredits: number;
 }
@@ -125,16 +125,14 @@ export const getRemainingAdCredits = async (userId: string): Promise<RemainingAd
     const activeSubscriptions = await UserSubscriptionModel.find({
         user: userId,
         credits: { $gt: 0 },
-        planType: { $in: [PlanType.MONTH_PLAN, PlanType.OFFICE_PLAN] }
+        planType: PlanType.OFFICE_PLAN,
+        isActive: true
     }).select('planType credits');
-
-    const monthlyCredits = activeSubscriptions.filter((sub) => sub.planType === PlanType.MONTH_PLAN).reduce((sum, sub) => sum + (sub.credits || 0), 0);
 
     const officeCredits = activeSubscriptions.filter((sub) => sub.planType === PlanType.OFFICE_PLAN).reduce((sum, sub) => sum + (sub.credits || 0), 0);
 
     return {
-        monthlyCredits,
         officeCredits,
-        totalCredits: monthlyCredits + officeCredits
+        totalCredits: officeCredits
     };
 };

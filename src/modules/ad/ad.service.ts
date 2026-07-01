@@ -17,7 +17,8 @@ export const createAd = async (adData: Partial<IAd>): Promise<AdDocument> => {
 
     const subscriptions = await UserSubscriptionModel.find({
         user: adData.user,
-        planType: { $in: [PlanType.MONTH_PLAN, PlanType.OFFICE_PLAN] },
+        planType: PlanType.OFFICE_PLAN,
+        isActive: true,
         credits: { $gt: 0 }
     });
 
@@ -25,10 +26,8 @@ export const createAd = async (adData: Partial<IAd>): Promise<AdDocument> => {
         throw new CustomError('You dont have a subscription. Please subscribe first to create ads.', 400, 'NO_SUBSCRIPTION');
     }
 
-    // Deduct from monthly plan first, then office plan.
-    const monthlySubscription = subscriptions.find((sub) => sub.planType === PlanType.MONTH_PLAN);
     const officeSubscription = subscriptions.find((sub) => sub.planType === PlanType.OFFICE_PLAN);
-    const selectedSubscription = monthlySubscription || officeSubscription;
+    const selectedSubscription = officeSubscription;
 
     if (!selectedSubscription) {
         throw new CustomError('You have no ad credits remaining. Please purchase a plan to continue posting ads.', 400, 'INSUFFICIENT_CREDITS');

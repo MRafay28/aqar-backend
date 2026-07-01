@@ -4,8 +4,8 @@ import { PlanType } from './models/subscription-plan.model';
 export const createSubscriptionPlanSchema = z.object({
     body: z.object({
         name: z.string({ required_error: 'Plan name is required' }),
-        planType: z.nativeEnum(PlanType, {
-            errorMap: () => ({ message: 'Invalid plan type. Must be month-plan or office-plan' })
+        planType: z.literal(PlanType.OFFICE_PLAN, {
+            errorMap: () => ({ message: 'Invalid plan type. Only office-plan is supported' })
         }),
         description: z.string({ required_error: 'Description is required' }),
         price: z.number({ required_error: 'Price is required' }).min(0),
