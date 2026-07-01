@@ -7,8 +7,8 @@ export const createAdSchema = z.object({
             purpose: z.nativeEnum(AdPurpose, {
                 errorMap: () => ({ message: 'Invalid purpose. Must be sale, rent, or exchange' })
             }),
-            propertyType: z.string({ required_error: 'Property type is required' }),
-            area: z.string({ required_error: 'Area is required' }),
+            propertyType: z.number({ required_error: 'Property type is required' }).int().positive(),
+            area: z.number({ required_error: 'Area is required' }).int().positive(),
             price: z.number().min(0).optional().nullable(),
             phoneNumber: z.string({ required_error: 'Phone number is required' }),
             isPhoneHidden: z.boolean().optional(),
@@ -25,8 +25,8 @@ export const updateAdSchema = z.object({
     body: z
         .object({
             purpose: z.nativeEnum(AdPurpose).optional(),
-            propertyType: z.string().optional(),
-            area: z.string().optional(),
+            propertyType: z.number().int().positive().optional(),
+            area: z.number().int().positive().optional(),
             price: z.number().min(0).optional().nullable(),
             phoneNumber: z.string().optional(),
             isPhoneHidden: z.boolean().optional(),

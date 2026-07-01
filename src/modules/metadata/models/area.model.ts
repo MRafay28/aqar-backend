@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IArea extends Document {
+    publicId: number;
     label: string;
     labelAr: string;
     value: string;
@@ -11,6 +12,7 @@ export interface IArea extends Document {
 
 const AreaSchema: Schema = new Schema(
     {
+        publicId: { type: Number, required: true, immutable: true, unique: true, sparse: true, min: 1, index: true },
         label: { type: String, required: true },
         labelAr: { type: String, default: '' },
         value: { type: String, required: true, unique: true },
@@ -20,5 +22,12 @@ const AreaSchema: Schema = new Schema(
     },
     { timestamps: true }
 );
+
+AreaSchema.pre('validate', async function () {
+    if (this.isNew && !this.publicId) {
+        const { nextPublicId } = await import('../../counter/counter.service');
+        this.publicId = await nextPublicId('area');
+    }
+});
 
 export const Area = mongoose.model<IArea>('Area', AreaSchema);

@@ -5,6 +5,7 @@ import { WishlistModel, WishlistStatus } from './models/wishlist.model';
 import { FavoriteModel } from './models/favorite.model';
 import { NotificationModel, NotificationType } from './models/notification.model';
 import * as mediaService from '../media/media.service';
+import { resolveAdId, resolveMetadataInput } from '../public-id/public-id.service';
 
 // Profile Management
 export const getProfile = async (userId: string) => {
@@ -94,7 +95,7 @@ export const getUserAds = async (userId: string, status?: string, page: number =
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -106,7 +107,7 @@ export const getUserAds = async (userId: string, status?: string, page: number =
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },
@@ -196,21 +197,22 @@ export const createWishlist = async (
     userId: string,
     wishlistData: {
         purpose?: string;
-        propertyType?: string;
-        area?: string;
+        propertyType?: number;
+        area?: number;
         minPrice?: number;
         maxPrice?: number;
     }
 ) => {
+    const resolvedData = await resolveMetadataInput(wishlistData);
     const wishlist = await WishlistModel.create({
         user: userId,
-        ...wishlistData,
+        ...resolvedData,
         status: WishlistStatus.ACTIVE
     });
 
     await wishlist.populate([
-        { path: 'propertyType', select: 'label labelAr value' },
-        { path: 'area', select: 'label labelAr value governorateAr' }
+        { path: 'propertyType', select: 'publicId label labelAr value' },
+        { path: 'area', select: 'publicId label labelAr value governorateAr' }
     ]);
 
     return wishlist;
@@ -225,14 +227,14 @@ export const getWishlists = async (userId: string, status?: WishlistStatus) => {
     return await WishlistModel.find(filter)
         .populate({
             path: 'propertyType',
-            select: 'label labelAr value'
+            select: 'publicId label labelAr value'
         })
-        .populate('area', 'label labelAr value governorateAr')
+        .populate('area', 'publicId label labelAr value governorateAr')
         .populate({
             path: 'matchedAd',
             populate: [
-                { path: 'propertyType', select: 'label labelAr value' },
-                { path: 'area', select: 'label labelAr value governorateAr' }
+                { path: 'propertyType', select: 'publicId label labelAr value' },
+                { path: 'area', select: 'publicId label labelAr value governorateAr' }
             ]
         })
         .sort({ createdAt: -1 });
@@ -244,15 +246,16 @@ export const updateWishlist = async (
     updates: {
         status?: WishlistStatus;
         purpose?: string;
-        propertyType?: string;
-        area?: string;
+        propertyType?: number;
+        area?: number;
         minPrice?: number;
         maxPrice?: number;
     }
 ) => {
-    const wishlist = await WishlistModel.findOneAndUpdate({ _id: wishlistId, user: userId }, { $set: updates }, { new: true })
-        .populate('propertyType', 'label labelAr value')
-        .populate('area', 'label labelAr value governorateAr');
+    const resolvedUpdates = await resolveMetadataInput(updates);
+    const wishlist = await WishlistModel.findOneAndUpdate({ _id: wishlistId, user: userId }, { $set: resolvedUpdates }, { new: true })
+        .populate('propertyType', 'publicId label labelAr value')
+        .populate('area', 'publicId label labelAr value governorateAr');
 
     if (!wishlist) {
         throw new Error('Wishlist not found');
@@ -263,8 +266,8 @@ export const updateWishlist = async (
 export const deleteWishlist = async (wishlistId: string, userId: string) => {
     // Instead of deleting, set status to cancelled
     const result = await WishlistModel.findOneAndUpdate({ _id: wishlistId, user: userId }, { $set: { status: WishlistStatus.CANCELLED } }, { new: true })
-        .populate('propertyType', 'label labelAr value')
-        .populate('area', 'label labelAr value governorateAr');
+        .populate('propertyType', 'publicId label labelAr value')
+        .populate('area', 'publicId label labelAr value governorateAr');
 
     if (!result) {
         throw new Error('Wishlist not found');
@@ -274,24 +277,26 @@ export const deleteWishlist = async (wishlistId: string, userId: string) => {
 
 // Favorites
 export const addFavorite = async (userId: string, adId: string) => {
-    const existing = await FavoriteModel.findOne({ user: userId, ad: adId });
+    const adObjectId = await resolveAdId(adId);
+    const existing = await FavoriteModel.findOne({ user: userId, ad: adObjectId });
     if (existing) {
         return existing;
     }
 
-    const favorite = await FavoriteModel.create({ user: userId, ad: adId });
+    const favorite = await FavoriteModel.create({ user: userId, ad: adObjectId });
     return favorite.populate({
         path: 'ad',
         populate: [
-            { path: 'propertyType', select: 'label labelAr value' },
-            { path: 'area', select: 'label labelAr value governorateAr' },
+            { path: 'propertyType', select: 'publicId label labelAr value' },
+            { path: 'area', select: 'publicId label labelAr value governorateAr' },
             { path: 'user', select: 'name phoneNumber' }
         ]
     });
 };
 
 export const removeFavorite = async (userId: string, adId: string) => {
-    const result = await FavoriteModel.findOneAndDelete({ user: userId, ad: adId });
+    const adObjectId = await resolveAdId(adId);
+    const result = await FavoriteModel.findOneAndDelete({ user: userId, ad: adObjectId });
     if (!result) {
         throw new Error('Favorite not found');
     }
@@ -342,7 +347,7 @@ export const getFavorites = async (userId: string, page: number = 1, limit: numb
                 from: 'propertytypes',
                 localField: 'propertyType',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1 } }],
                 as: 'propertyType'
             }
         },
@@ -354,7 +359,7 @@ export const getFavorites = async (userId: string, page: number = 1, limit: numb
                 from: 'areas',
                 localField: 'area',
                 foreignField: '_id',
-                pipeline: [{ $project: { label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
+                pipeline: [{ $project: { publicId: 1, label: 1, labelAr: 1, value: 1, governorateAr: 1 } }],
                 as: 'area'
             }
         },
@@ -418,7 +423,8 @@ export const getFavorites = async (userId: string, page: number = 1, limit: numb
 };
 
 export const isFavorite = async (userId: string, adId: string) => {
-    const favorite = await FavoriteModel.findOne({ user: userId, ad: adId });
+    const adObjectId = await resolveAdId(adId);
+    const favorite = await FavoriteModel.findOne({ user: userId, ad: adObjectId });
     return !!favorite;
 };
 

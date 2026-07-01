@@ -13,6 +13,7 @@ export enum AdStatus {
 }
 
 export interface IAd extends Document {
+    publicId: number;
     user: mongoose.Types.ObjectId;
     title?: string; // Optional if not in design, but good practice
     purpose: AdPurpose;
@@ -36,6 +37,7 @@ export interface IAd extends Document {
 
 const AdSchema: Schema = new Schema(
     {
+        publicId: { type: Number, required: true, immutable: true, unique: true, sparse: true, min: 1, index: true },
         user: { type: Schema.Types.ObjectId, ref: 'User', required: true },
         purpose: { type: String, enum: Object.values(AdPurpose), required: true },
         propertyType: { type: Schema.Types.ObjectId, ref: 'PropertyType', required: true },
@@ -54,6 +56,13 @@ const AdSchema: Schema = new Schema(
     },
     { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
+
+AdSchema.pre('validate', async function () {
+    if (this.isNew && !this.publicId) {
+        const { nextPublicId } = await import('../../counter/counter.service');
+        this.publicId = await nextPublicId('ad');
+    }
+});
 
 AdSchema.virtual('isPremium')
     .get(function (this: IAd & { premiumAd?: boolean }) {

@@ -6,17 +6,6 @@ const seedSubscriptionPlan = async (): Promise<void> => {
     try {
         const plans = [
             {
-                name: 'Month Plan',
-                nameAr: 'خطة الشهر',
-                planType: PlanType.MONTH_PLAN,
-                description: 'إعلان - 1 شهور',
-                price: 0,
-                numberOfMonths: 1,
-                adCredits: 20,
-                discount: 0,
-                isActive: true
-            },
-            {
                 name: 'Office plan',
                 nameAr: 'خطة المكتب',
                 planType: PlanType.OFFICE_PLAN,
@@ -32,6 +21,7 @@ const seedSubscriptionPlan = async (): Promise<void> => {
         for (const plan of plans) {
             await SubscriptionPlanModel.findOneAndUpdate({ planType: plan.planType }, { $set: plan }, { upsert: true, new: true });
         }
+        await SubscriptionPlanModel.updateMany({ planType: PlanType.MONTH_PLAN }, { $set: { isActive: false } });
 
         logger.info('Subscription plans seeded/updated successfully.');
     } catch (error: unknown) {

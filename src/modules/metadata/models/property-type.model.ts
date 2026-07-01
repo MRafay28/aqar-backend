@@ -1,6 +1,7 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IPropertyType extends Document {
+    publicId: number;
     label: string;
     labelAr: string;
     value: string;
@@ -9,6 +10,7 @@ export interface IPropertyType extends Document {
 
 const PropertyTypeSchema: Schema = new Schema(
     {
+        publicId: { type: Number, required: true, immutable: true, unique: true, sparse: true, min: 1, index: true },
         label: { type: String, required: true },
         labelAr: { type: String, default: '' },
         value: { type: String, required: true, unique: true },
@@ -16,5 +18,12 @@ const PropertyTypeSchema: Schema = new Schema(
     },
     { timestamps: true }
 );
+
+PropertyTypeSchema.pre('validate', async function () {
+    if (this.isNew && !this.publicId) {
+        const { nextPublicId } = await import('../../counter/counter.service');
+        this.publicId = await nextPublicId('propertyType');
+    }
+});
 
 export const PropertyType = mongoose.model<IPropertyType>('PropertyType', PropertyTypeSchema);
